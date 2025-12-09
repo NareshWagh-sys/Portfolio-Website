@@ -457,6 +457,11 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
         }
 
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
         .contact-form input,
         .contact-form textarea {
             width: 100%;
@@ -472,11 +477,55 @@
         .contact-form textarea:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         .contact-form textarea {
             min-height: 150px;
             resize: vertical;
+        }
+
+        .form-message {
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .form-success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .form-error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .btn-loading {
+            position: relative;
+            color: transparent !important;
+        }
+
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            margin-left: -10px;
+            margin-top: -10px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         /* Footer */
@@ -809,7 +858,7 @@
                             <i class="fas fa-envelope"></i>
                             <div>
                                 <h4>Email</h4>
-                                <p>nareshwagh@gmail.com.com</p>
+                                <p>nareshwagh@gmail.com</p>
                             </div>
                         </div>
                         <div class="contact-item">
@@ -830,16 +879,39 @@
                 </div>
                 
                 <div class="contact-form">
-                   <div class="contact-form">
-                   <form id="contactForm">
-                        <input type="text" placeholder="Your Name" required>
-                        <input type="email" placeholder="Your Email" required>
-                        <input type="text" placeholder="Subject" required>
-                        <textarea placeholder="Your Message" required></textarea>
-                        <button type="submit" class="btn">Send Message</button>
+                    <!-- Success and Error Messages -->
+                    <div id="formSuccess" class="form-message form-success">
+                        <i class="fas fa-check-circle"></i> Thank you! Your message has been sent successfully. I'll get back to you soon.
+                    </div>
+                    <div id="formError" class="form-message form-error">
+                        <i class="fas fa-exclamation-circle"></i> There was an error sending your message. Please try again or email me directly.
+                    </div>
+                    
+                    <!-- IMPORTANT: Replace YOUR_FORM_ID_HERE with your actual Formspree Form ID -->
+                    <form id="contactForm" action="https://formspree.io/f/mqardndk" method="POST">
+                        <div class="form-group">
+                            <input type="text" id="name" name="name" placeholder="Your Name" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="email" id="email" name="_replyto" placeholder="Your Email" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="subject" name="_subject" placeholder="Subject" required>
+                        </div>
+                        <div class="form-group">
+                            <textarea id="message" name="message" placeholder="Your Message" required></textarea>
+                        </div>
+                        
+                        <!-- Honeypot field for spam protection (hidden) -->
+                        <input type="text" name="_gotcha" style="display:none">
+                        
+                        <!-- Formspree redirect (optional) -->
+                        <input type="hidden" name="_next" value="#contact">
+                        
+                        <button type="submit" id="submitBtn" class="btn">
+                            <span id="btnText">Send Message</span>
+                        </button>
                     </form>
-                 </div>
-
                 </div>
             </div>
         </div>
@@ -897,12 +969,74 @@
             }
         });
         
-        // Contact form submission
+        // FORMSPREE FORM SUBMISSION
         const contactForm = document.getElementById('contactForm');
-        contactForm.addEventListener('submit', (e) => {
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const formSuccess = document.getElementById('formSuccess');
+        const formError = document.getElementById('formError');
+        
+        contactForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            alert('Thank you for your message! I will get back to you soon.');
-            contactForm.reset();
+            
+            // Hide any previous messages
+            formSuccess.style.display = 'none';
+            formError.style.display = 'none';
+            
+            // Show loading state
+            const originalBtnText = btnText.textContent;
+            submitBtn.classList.add('btn-loading');
+            btnText.textContent = '';
+            submitBtn.disabled = true;
+            
+            try {
+                // Collect form data
+                const formData = new FormData(contactForm);
+                
+                // Send to Formspree
+                const response = await fetch(contactForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    // Show success message
+                    formSuccess.style.display = 'block';
+                    
+                    // Scroll to success message
+                    formSuccess.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    
+                    // Reset form
+                    contactForm.reset();
+                    
+                    // Hide success message after 5 seconds
+                    setTimeout(() => {
+                        formSuccess.style.display = 'none';
+                    }, 5000);
+                } else {
+                    // Try to get error details
+                    const errorData = await response.json();
+                    console.error('Formspree error:', errorData);
+                    
+                    // Show error message
+                    formError.style.display = 'block';
+                    formError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                
+                // Show error message
+                formError.style.display = 'block';
+                formError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } finally {
+                // Reset button
+                submitBtn.classList.remove('btn-loading');
+                btnText.textContent = originalBtnText;
+                submitBtn.disabled = false;
+            }
         });
         
         // Smooth scrolling for anchor links
@@ -924,10 +1058,4 @@
         });
     </script>
 </body>
-
 </html>
-
-
-
-
-
